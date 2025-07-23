@@ -8,6 +8,7 @@ from PyQt6.QtGui import QFont, QPalette, QColor
 from ui.sidebar import ModernSidebar
 from ui.entry_form import DataEntryForm
 from ui.data_viewer import DataViewer
+from ui.dashboard import Dashboard
 from database.manager import DatabaseManager
 from database.sync import DatabaseSyncHandler
 from config.settings import *
@@ -27,8 +28,8 @@ class MainWindow(QMainWindow):
         self.setup_connections()
         self.apply_theme()
         
-        # Start with entry form
-        self.show_entry_form()
+        # Start with dashboard
+        self.show_dashboard()
         
         # Initialize sync handler after everything is set up
         self._setup_sync_handler()
@@ -57,10 +58,12 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.content_area)
         
         # Create pages
+        self.dashboard = Dashboard(self.db_manager)
         self.entry_form = DataEntryForm(self.db_manager)
         self.data_viewer = DataViewer(self.db_manager)
         
         # Add pages to content area
+        self.content_area.addWidget(self.dashboard)
         self.content_area.addWidget(self.entry_form)
         self.content_area.addWidget(self.data_viewer)
         
@@ -70,6 +73,7 @@ class MainWindow(QMainWindow):
     def setup_connections(self):
         """Set up signal connections."""
         # Sidebar navigation
+        self.sidebar.dashboard_requested.connect(self.show_dashboard)
         self.sidebar.entry_form_requested.connect(self.show_entry_form)
         self.sidebar.data_viewer_requested.connect(self.show_data_viewer)
         
@@ -79,6 +83,9 @@ class MainWindow(QMainWindow):
         # Data viewer signals
         self.data_viewer.entry_updated.connect(self.on_entry_updated)
         self.data_viewer.entry_deleted.connect(self.on_entry_deleted)
+        
+        # Dashboard signals
+        self.dashboard.refresh_requested.connect(self.on_dashboard_refresh)
     
     def _setup_sync_handler(self):
         """Set up sync handler with minimal resource usage."""
@@ -105,6 +112,13 @@ class MainWindow(QMainWindow):
                 }
             """)
     
+    def show_dashboard(self):
+        """Show the dashboard."""
+        self.content_area.setCurrentWidget(self.dashboard)
+        self.sidebar.set_active_button("dashboard")
+        self.dashboard.refresh_data()
+        self.statusBar().showMessage("Dashboard Mode")
+    
     def show_entry_form(self):
         """Show the data entry form."""
         self.content_area.setCurrentWidget(self.entry_form)
@@ -120,9 +134,12 @@ class MainWindow(QMainWindow):
     
     def on_database_changed(self):
         """Handle database change notification."""
-        # Refresh current view if it's the data viewer
-        if self.content_area.currentWidget() == self.data_viewer:
+        # Refresh current view
+        current_widget = self.content_area.currentWidget()
+        if current_widget == self.data_viewer:
             self.data_viewer.refresh_data()
+        elif current_widget == self.dashboard:
+            self.dashboard.refresh_data()
         
         # Update status
         self.statusBar().showMessage("Database updated - Data refreshed", 3000)
@@ -130,17 +147,26 @@ class MainWindow(QMainWindow):
     def on_entry_saved(self):
         """Handle entry saved event."""
         self.statusBar().showMessage("Entry saved successfully", 3000)
-        # If data viewer is open, refresh it
+        # Refresh dashboard and data viewer
+        self.dashboard.refresh_data()
         if hasattr(self, 'data_viewer'):
             self.data_viewer.refresh_data()
     
     def on_entry_updated(self):
         """Handle entry updated event."""
         self.statusBar().showMessage("Entry updated successfully", 3000)
+        # Refresh dashboard
+        self.dashboard.refresh_data()
     
     def on_entry_deleted(self):
         """Handle entry deleted event."""
         self.statusBar().showMessage("Entry deleted successfully", 3000)
+        # Refresh dashboard
+        self.dashboard.refresh_data()
+    
+    def on_dashboard_refresh(self):
+        """Handle dashboard refresh request."""
+        self.statusBar().showMessage("Dashboard refreshed", 2000)
     
     def closeEvent(self, event):
         """Handle application close event."""

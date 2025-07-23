@@ -8,6 +8,7 @@ from PyQt6.QtGui import QFont, QPalette, QColor
 from ui.sidebar import ModernSidebar
 from ui.entry_form import DataEntryForm
 from ui.data_viewer import DataViewer
+from ui.dashboard import Dashboard
 from database.manager import DatabaseManager
 from config.settings import *
 
@@ -50,10 +51,12 @@ class MainWindowLite(QMainWindow):
         main_layout.addWidget(self.content_area)
         
         # Create pages
+        self.dashboard = Dashboard(self.db_manager)
         self.entry_form = DataEntryForm(self.db_manager)
         self.data_viewer = DataViewer(self.db_manager)
         
         # Add pages to content area
+        self.content_area.addWidget(self.dashboard)
         self.content_area.addWidget(self.entry_form)
         self.content_area.addWidget(self.data_viewer)
         
@@ -81,6 +84,7 @@ class MainWindowLite(QMainWindow):
     def setup_connections(self):
         """Set up signal connections."""
         # Sidebar navigation
+        self.sidebar.dashboard_requested.connect(self.show_dashboard)
         self.sidebar.entry_form_requested.connect(self.show_entry_form)
         self.sidebar.data_viewer_requested.connect(self.show_data_viewer)
         
@@ -106,6 +110,14 @@ class MainWindowLite(QMainWindow):
                 }
             """)
     
+    def show_dashboard(self):
+        """Show the dashboard."""
+        self.content_area.setCurrentWidget(self.dashboard)
+        self.sidebar.set_active_button("dashboard")
+        self.statusBar().showMessage("Dashboard Mode - Lite")
+        # Refresh dashboard data
+        self.dashboard.refresh_data()
+    
     def show_entry_form(self):
         """Show the data entry form."""
         self.content_area.setCurrentWidget(self.entry_form)
@@ -130,17 +142,25 @@ class MainWindowLite(QMainWindow):
     def on_entry_saved(self):
         """Handle entry saved event."""
         self.statusBar().showMessage("Entry saved successfully", 3000)
-        # If data viewer is open, refresh it
+        # Refresh dashboard and data viewer
+        if hasattr(self, 'dashboard'):
+            self.dashboard.refresh_data()
         if hasattr(self, 'data_viewer'):
             self.data_viewer.refresh_data()
     
     def on_entry_updated(self):
         """Handle entry updated event."""
         self.statusBar().showMessage("Entry updated successfully", 3000)
+        # Refresh dashboard when data is updated
+        if hasattr(self, 'dashboard'):
+            self.dashboard.refresh_data()
     
     def on_entry_deleted(self):
         """Handle entry deleted event."""
         self.statusBar().showMessage("Entry deleted successfully", 3000)
+        # Refresh dashboard when data is deleted
+        if hasattr(self, 'dashboard'):
+            self.dashboard.refresh_data()
     
     def closeEvent(self, event):
         """Handle application close event."""

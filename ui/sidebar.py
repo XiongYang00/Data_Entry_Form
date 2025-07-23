@@ -76,6 +76,7 @@ class ModernSidebar(QFrame):
     # Signals
     entry_form_requested = pyqtSignal()
     data_viewer_requested = pyqtSignal()
+    dashboard_requested = pyqtSignal()
     
     def __init__(self):
         super().__init__()
@@ -106,10 +107,12 @@ class ModernSidebar(QFrame):
         layout.addWidget(separator)
         
         # Navigation buttons
+        self.dashboard_btn = ModernButton("📊 Dashboard", "📊")
         self.entry_btn = ModernButton("📝 Data Entry", "📝")
-        self.viewer_btn = ModernButton("📊 View Data", "📊")
+        self.viewer_btn = ModernButton("� View Data", "�")
         self.toggle_btn = ModernButton("◀ Collapse", "▶")
         
+        layout.addWidget(self.dashboard_btn)
         layout.addWidget(self.entry_btn)
         layout.addWidget(self.viewer_btn)
         
@@ -120,12 +123,13 @@ class ModernSidebar(QFrame):
         layout.addWidget(self.toggle_btn)
         
         # Connect signals
+        self.dashboard_btn.clicked.connect(self.on_dashboard_clicked)
         self.entry_btn.clicked.connect(self.on_entry_clicked)
         self.viewer_btn.clicked.connect(self.on_viewer_clicked)
         self.toggle_btn.clicked.connect(self.toggle_sidebar)
         
         # Set initial active button
-        self.set_active_button("entry")
+        self.set_active_button("dashboard")
     
     def apply_theme(self):
         """Apply sidebar theme."""
@@ -139,6 +143,11 @@ class ModernSidebar(QFrame):
             }}
         """)
     
+    def on_dashboard_clicked(self):
+        """Handle dashboard button click."""
+        self.set_active_button("dashboard")
+        self.dashboard_requested.emit()
+    
     def on_entry_clicked(self):
         """Handle entry form button click."""
         self.set_active_button("entry")
@@ -151,6 +160,7 @@ class ModernSidebar(QFrame):
     
     def set_active_button(self, button_name: str):
         """Set the active navigation button."""
+        self.dashboard_btn.set_active(button_name == "dashboard")
         self.entry_btn.set_active(button_name == "entry")
         self.viewer_btn.set_active(button_name == "viewer")
     
@@ -173,6 +183,7 @@ class ModernSidebar(QFrame):
             self.header_label.show()
         
         # Update button text
+        self.dashboard_btn.set_collapsed(self.is_collapsed)
         self.entry_btn.set_collapsed(self.is_collapsed)
         self.viewer_btn.set_collapsed(self.is_collapsed)
         
